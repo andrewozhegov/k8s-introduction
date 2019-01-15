@@ -27,9 +27,6 @@ func main() {
 	r.GET("/", home)
 
 	// Readiness and liveness probes for Kubernetes
-	//r.GET("/info", func(c *router.Control) {
-	//	common_handlers.Info(c, version.RELEASE, version.REPO, version.COMMIT)
-	//})
     r.GET("/info", common_handlers.Handler(version.RELEASE, version.REPO, version.COMMIT))
 	r.GET("/healthz", func(c *router.Control) {
 		c.Code(http.StatusOK).Body(http.StatusText(http.StatusOK))
@@ -38,7 +35,7 @@ func main() {
     go r.Listen(":" + port) // or ("0.0.0.0:" + port)
 
     logger := log.WithField("event", "shutdown")
-	sdHandler := shutdown.NewHandler(logger)
+    sdHandler := shutdown.NewHandler(logger)
 	sdHandler.RegisterShutdown(sd)
 }
 
