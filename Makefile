@@ -10,17 +10,9 @@ RELEASE?=0.1.0
 PROJECT?=github.com/${USERSPACE}/${APP}
 HELM_REPO?=https://${USERSPACE}.github.io/${CHARTS}
 GOOS?=linux
-REGISTRY?=registry.k8s.community
 SERVICE_PORT?=8000
 
-NAMESPACE?=dev
-PREFIX?=${REGISTRY}/${NAMESPACE}/${APP}
-CONTAINER_NAME?=${APP}-${NAMESPACE}
-
-ifeq ($(NAMESPACE), default)
-	PREFIX=${REGISTRY}/${APP}
-	CONTAINER_NAME=${APP}
-endif
+CONTAINER_IMAGE?=${USERSPACE}/${APP}
 
 REPO_INFO=$(shell git config --get remote.origin.url)
 
@@ -38,20 +30,24 @@ build: vendor
 		-o ${APP}
 
 container: build
-	docker build --pull -t $(PREFIX):$(RELEASE) .
+	docker build --pull -t $(CONTAINER_IMAGE):$(RELEASE) .
 
 push: container
-	docker push $(PREFIX):$(RELEASE)
+	docker push $(CONTAINER_IMAGE):$(RELEASE)
 
 run: container
-	docker run --name ${CONTAINER_NAME} -p ${SERVICE_PORT}:${SERVICE_PORT} \
+	docker run --name ${APP} -p ${SERVICE_PORT}:${SERVICE_PORT} \
 		-e "SERVICE_PORT=${SERVICE_PORT}" \
-		-d $(PREFIX):$(RELEASE)
+		-d $(CONTAINER_IMAGE):$(RELEASE)
 
 deploy: push
-	helm repo add ${USERSPACE} ${HELM_REPO} \
-	&& helm repo up \
-    && helm upgrade ${CONTAINER_NAME} ${USERSPACE}/${APP} --namespace ${NAMESPACE} --set image.tag=${RELEASE} -i --wait
+	for t in $(shell find ./kubernetes/${APP}/ -type f -name "*.yaml"); do \
+    cat $$t | \
+        gsed -E "s/\{\{(\s*)\.Release(\s*)\}\}/$(RELEASE)/g" | \
+        gsed -E "s/\{\{(\s*)\.ServiceName(\s*)\}\}/$(APP)/g"; \
+    echo ---; \
+    done > tmp.yaml
+	kubectl apply -f tmp.yaml
 
 fmt:
 	@echo "+ $@"
