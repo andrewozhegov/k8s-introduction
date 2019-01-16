@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"sync/atomic"
 
 	"github.com/andrewozhegov/k8s-introduction/version"
 	"github.com/takama/router"
@@ -37,6 +38,17 @@ func healthz(c *router.Control) {
 	c.Code(http.StatusOK).Body("Ok")
 }
 
+// readyz is a readiness probe.
+func readyz(isReady *atomic.Value) http.HandlerFunc {
+    return func(w http.ResponseWriter, _ *http.Request) {
+        if isReady == nil || !isReady.Load().(bool) {
+            http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+            return
+        }
+        w.WriteHeader(http.StatusOK)
+    }
+}
+
 func info(c *router.Control) {
 	c.Code(http.StatusOK).Body(
 		map[string]string{
@@ -60,6 +72,7 @@ func main() {
 	r.Logger = logger
 	r.GET("/info", info)
 	r.GET("/healthz", healthz)
+	//r.GET("/readyz", readyz)
 	r.GET("/", root)
 	go r.Listen(fmt.Sprintf("0.0.0.0:%s", port))
 

@@ -40,10 +40,10 @@ run: container
 		-d $(CONTAINER_IMAGE):$(RELEASE)
 
 deploy: push
-	for t in $(shell find ./kubernetes/${APP}/ -type f -name "*.yaml"); do \
+	for t in $(shell find ./k8s-templates/ -type f -name "*.yaml"); do \
     cat $$t | \
-        gsed -E "s/\{\{(\s*)\.Release(\s*)\}\}/$(RELEASE)/g" | \
-        gsed -E "s/\{\{(\s*)\.ServiceName(\s*)\}\}/$(APP)/g"; \
+        sed -E "s/\{\{(\s*)\.Release(\s*)\}\}/$(RELEASE)/g" | \
+        sed -E "s/\{\{(\s*)\.ServiceName(\s*)\}\}/$(APP)/g"; \
     echo ---; \
     done > tmp.yaml
 	kubectl apply -f tmp.yaml
