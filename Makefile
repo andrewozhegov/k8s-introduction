@@ -8,7 +8,6 @@ USERSPACE?=andrewozhegov
 CHARTS?=k8s-introcharts
 RELEASE?=0.1.0
 PROJECT?=github.com/${USERSPACE}/${APP}
-HELM_REPO?=https://${USERSPACE}.github.io/${CHARTS}
 GOOS?=linux
 SERVICE_PORT?=8000
 
