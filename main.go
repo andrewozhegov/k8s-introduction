@@ -1,46 +1,85 @@
 package main
 
 import (
-    "net/http"
-    "os"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
-    "github.com/Sirupsen/logrus"
-    common_handlers "github.com/k8s-community/handlers/info" // use $ glide get to add
-    "github.com/andrewozhegov/k8s-introduction/version"
-    "github.com/k8s-community/utils/shutdown"
-    "github.com/takama/router" // use $ go get to install it
-    //"github.com/julienschmidt/httprouter" // good solution too
+	"github.com/andrewozhegov/k8s-introduction/version"
+	"github.com/takama/router"
 )
 
-var log = logrus.New()
+// DEFAULTPORT returns default port number
+const DEFAULTPORT = "8000"
 
-// Run server: go build && k8s-introduction
-// Try requests: curl http://127.0.0.1:8000/test
+// simplest logger, which initialized during starts of the application
+var (
+	stdlog = log.New(os.Stdout, "[MYAPP]: ", log.LstdFlags)
+	errlog = log.New(os.Stderr, "[MYAPP:ERROR]: ", log.Ldate|log.Ltime|log.Lshortfile)
+)
+
+func shutdown() (string, error) {
+	return "Shutdown", nil
+}
+
+func logger(c *router.Control) {
+	remoteAddr := c.Request.Header.Get("X-Forwarded-For")
+	if remoteAddr == "" {
+		remoteAddr = c.Request.RemoteAddr
+	}
+	stdlog.Println(remoteAddr, c.Request.Method, c.Request.URL.Path)
+}
+
+func healthz(c *router.Control) {
+	c.Code(http.StatusOK).Body("Ok")
+}
+
+func info(c *router.Control) {
+	c.Code(http.StatusOK).Body(
+		map[string]string{
+			"version": version.RELEASE,
+			"commit":  version.COMMIT,
+			"repo":    version.REPO,
+		},
+	)
+}
+
+func root(c *router.Control) {
+	c.Code(http.StatusOK).Body(fmt.Sprintf("k8s-introduction v%s", version.RELEASE))
+}
+
 func main() {
-    port := os.Getenv("SERVICE_PORT") // specify port when run: $ env SERVICE_PORT=8000 ./k8s-introduction
+	port := os.Getenv("SERVICE_PORT")
 	if len(port) == 0 {
-        log.Fatal("Service port in not specified")
-    }
+		port = DEFAULTPORT
+	}
+	r := router.New()
+	r.Logger = logger
+	r.GET("/info", info)
+	r.GET("/healthz", healthz)
+	r.GET("/", root)
+	go r.Listen(fmt.Sprintf("0.0.0.0:%s", port))
 
-    r := router.New()
-    r.Logger = logger
-	r.GET("/", home)
-
-	// Readiness and liveness probes for Kubernetes
-    r.GET("/info", common_handlers.Handler(version.RELEASE, version.REPO, version.COMMIT))
-	r.GET("/healthz", func(c *router.Control) {
-		c.Code(http.StatusOK).Body(http.StatusText(http.StatusOK))
-	})
-
-    go r.Listen(":" + port) // or ("0.0.0.0:" + port)
-
-    logger := log.WithField("event", "shutdown")
-    sdHandler := shutdown.NewHandler(logger)
-	sdHandler.RegisterShutdown(sd)
+	// Set up channel on which to send signal notifications.
+	// We must use a buffered channel or risk missing the signal
+	// if we're not ready to receive when the signal is sent.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
+	killSignal := <-interrupt
+	stdlog.Println("Got signal:", killSignal)
+	status, err := shutdown()
+	if err != nil {
+		errlog.Printf("Error: %s Status: %s\n", err.Error(), status)
+		os.Exit(1)
+	}
+	if killSignal == os.Kill {
+		stdlog.Println("Service was killed")
+	} else {
+		stdlog.Println("Service was terminated by system signal")
+	}
+	stdlog.Println(status)
 }
 
-// sd does graceful shutdown of the service
-func sd() (string, error) {
-	// if service has to finish some tasks before shutting down, these tasks must be finished her	
-    return "Ok", nil
-}
