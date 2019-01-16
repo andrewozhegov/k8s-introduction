@@ -2,16 +2,25 @@ all: push
 
 BUILDTAGS=
 
+# Use the 0.0.0 tag for testing, it shouldn't clobber any release builds
 APP?=k8s-introduction
 USERSPACE?=andrewozhegov
-RELEASE?=0.0.1
+CHARTS?=k8s-introcharts
+RELEASE?=0.1.0
 PROJECT?=github.com/${USERSPACE}/${APP}
+HELM_REPO?=https://${USERSPACE}.github.io/${CHARTS}
 GOOS?=linux
+REGISTRY?=registry.k8s.community
 SERVICE_PORT?=8000
 
-NAMESPACE?=andrewozhegov
+NAMESPACE?=dev
 PREFIX?=${REGISTRY}/${NAMESPACE}/${APP}
 CONTAINER_NAME?=${APP}-${NAMESPACE}
+
+ifeq ($(NAMESPACE), default)
+	PREFIX=${REGISTRY}/${APP}
+	CONTAINER_NAME=${APP}
+endif
 
 REPO_INFO=$(shell git config --get remote.origin.url)
 
@@ -29,12 +38,20 @@ build: vendor
 		-o ${APP}
 
 container: build
-	docker build --pull -t $(APP):$(RELEASE) .
+	docker build --pull -t $(PREFIX):$(RELEASE) .
+
+push: container
+	docker push $(PREFIX):$(RELEASE)
 
 run: container
 	docker run --name ${CONTAINER_NAME} -p ${SERVICE_PORT}:${SERVICE_PORT} \
 		-e "SERVICE_PORT=${SERVICE_PORT}" \
-		-d $(APP):$(RELEASE)
+		-d $(PREFIX):$(RELEASE)
+
+deploy: push
+	helm repo add ${USERSPACE} ${HELM_REPO} \
+	&& helm repo up \
+    && helm upgrade ${CONTAINER_NAME} ${USERSPACE}/${APP} --namespace ${NAMESPACE} --set image.tag=${RELEASE} -i --wait
 
 fmt:
 	@echo "+ $@"
