@@ -1,98 +1,65 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/http"
 	"os"
+    "context"
+    "net/http"
 	"os/signal"
 	"syscall"
-	"sync/atomic"
 
 	"github.com/andrewozhegov/k8s-introduction/version"
-	"github.com/takama/router"
+	"github.com/andrewozhegov/k8s-introduction/handlers"
 )
 
 // DEFAULTPORT returns default port number
 const DEFAULTPORT = "8000"
-
-// simplest logger, which initialized during starts of the application
-var (
-	stdlog = log.New(os.Stdout, "[MYAPP]: ", log.LstdFlags)
-	errlog = log.New(os.Stderr, "[MYAPP:ERROR]: ", log.Ldate|log.Ltime|log.Lshortfile)
-)
-
-func shutdown() (string, error) {
-	return "Shutdown", nil
-}
-
-func logger(c *router.Control) {
-	remoteAddr := c.Request.Header.Get("X-Forwarded-For")
-	if remoteAddr == "" {
-		remoteAddr = c.Request.RemoteAddr
-	}
-	stdlog.Println(remoteAddr, c.Request.Method, c.Request.URL.Path)
-}
-
-func healthz(c *router.Control) {
-	c.Code(http.StatusOK).Body("Ok")
-}
-
-// readyz is a readiness probe.
-func readyz(isReady *atomic.Value) http.HandlerFunc {
-    return func(w http.ResponseWriter, _ *http.Request) {
-        if isReady == nil || !isReady.Load().(bool) {
-            http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
-            return
-        }
-        w.WriteHeader(http.StatusOK)
-    }
-}
-
-func info(c *router.Control) {
-	c.Code(http.StatusOK).Body(
-		map[string]string{
-			"version": version.RELEASE,
-			"commit":  version.COMMIT,
-			"repo":    version.REPO,
-		},
-	)
-}
-
-func root(c *router.Control) {
-	c.Code(http.StatusOK).Body(fmt.Sprintf("k8s-introduction v%s", version.RELEASE))
-}
 
 func main() {
 	port := os.Getenv("SERVICE_PORT")
 	if len(port) == 0 {
 		port = DEFAULTPORT
 	}
-	r := router.New()
-	r.Logger = logger
-	r.GET("/info", info)
-	r.GET("/healthz", healthz)
-	//r.GET("/readyz", readyz)
-	r.GET("/", root)
-	go r.Listen(fmt.Sprintf("0.0.0.0:%s", port))
+
+    r := handlers.Router(version.RELEASE, version.COMMIT, version.REPO)
 
 	// Set up channel on which to send signal notifications.
 	// We must use a buffered channel or risk missing the signal
 	// if we're not ready to receive when the signal is sent.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
-	killSignal := <-interrupt
-	stdlog.Println("Got signal:", killSignal)
-	status, err := shutdown()
-	if err != nil {
-		errlog.Printf("Error: %s Status: %s\n", err.Error(), status)
-		os.Exit(1)
+
+    srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: r,
 	}
-	if killSignal == os.Kill {
-		stdlog.Println("Service was killed")
-	} else {
-		stdlog.Println("Service was terminated by system signal")
+
+    // this channel is for graceful shutdown:
+	// if we receive an error, we can send it here to notify the server to be stopped
+	shutdown := make(chan struct{}, 1)
+	go func() {
+		err := srv.ListenAndServe()
+		if err != nil {
+			shutdown <- struct{}{}
+			log.Printf("%v", err)
+		}
+	}()
+	log.Print("The service is ready to listen and serve.")
+
+	select {
+	case killSignal := <-interrupt:
+		switch killSignal {
+		case os.Interrupt:
+			log.Print("Got SIGINT...")
+		case syscall.SIGTERM:
+			log.Print("Got SIGTERM...")
+		}
+	case <-shutdown:
+		log.Printf("Got an error...")
 	}
-	stdlog.Println(status)
+
+	log.Print("The service is shutting down...")
+	srv.Shutdown(context.Background())
+	log.Print("Done")
 }
 
