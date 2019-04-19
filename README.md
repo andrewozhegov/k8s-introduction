@@ -10,6 +10,8 @@ Step-by-step process of deployment a simple Go web-service into Kubernetes
 A set of configurable code quality checks to perform before committing.
 Specify hooks in `.pre-commit-config.yaml` file:
 
+![pre-commit hook](https://cdn-images-1.medium.com/max/1200/1*wjsbeBicpTWF-UHXn19ZbQ.jpeg)
+
 ```
 -   repo: git://github.com/dnephin/pre-commit-golang      # repo with hooks
     sha: 471a7c123ea7a3b776ff018edf00066947873a94         # revision
