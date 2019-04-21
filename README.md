@@ -23,16 +23,102 @@ Specify hooks in `.pre-commit-config.yaml` file:
 
 ## Step 2. Simple Go web-service architecture
 
+![arch](img/k8s-introduction.png)
+
 ### Router
+
+Current microservice uses `gorilla/mux` router. Its constructor accepts basic microservice metadata in order to display it on `home` GET request.
+
+```
+func Router(version, commit, repo string) *mux.Router{
+	isReady := &atomic.Value{}
+	isReady.Store(false)
+	go func() {
+		log.Printf("Readyz probe is negative by default...")
+		time.Sleep(10 * time.Second)
+		isReady.Store(true)
+		log.Printf("Readyz probe is positive.")
+	}()
+
+	r := mux.NewRouter()
+	r.HandleFunc("/", root).Methods("GET")
+	r.HandleFunc("/home", home(version, commit, repo)).Methods("GET")
+	r.HandleFunc("/healthz", healthz)
+	r.HandleFunc("/readyz", readyz(isReady))
+
+    return r
+}
+```
+
 ### Logging
-### Healthchecks: liveness & readiess
+
+Use standart go library `log` for logging, to be aware of what is happening on the server side.
+
+### Home GET request handler
+
+On `GET` request on `/home` server will respond information about the version of application, repository name and commit hash  in json format. All this information is specified in `version` package.
+
+```
+func home(version, commit, repo string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		info := struct {
+			Version   string `json:"version"`
+			Commit    string `json:"commit"`
+			Repo      string `json:"repo"`
+		}{
+			version, commit, repo,
+		}
+		body, err := json.Marshal(info)
+		if err != nil {
+			log.Printf("Could not encode info data: %v", err)
+			http.Error(w, http.StatusText(http.StatusServiceUnavailable), 
+						http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+	}
+}
+```
+
+### Healthchecks: liveness & readiness
+
+Kubernetes uses **liveness** probes to know when to restart a container. If a container is unresponsive — perhaps the application is deadlocked due to a multi-threading defect — restarting the container can make the application more available, despite the  defect. Just to be sure that the service can respond.
+
+```
+func healthz(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+```
+
+Kubernetes uses **readiness** probes to decide when the container is available for accepting traffic.
+
+```
+func readyz(isReady *atomic.Value) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		if isReady == nil || !isReady.Load().(bool) {
+			http.Error(w, http.StatusText(http.StatusServiceUnavailable),
+						http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+```
+
 ### Graceful shutdown
+
+```
+
+```
 
 ## Step 3. Tests
 
 ## Step 4. Managing dependencies with Glide
 
-## Step 5. CI/CD process in Makefile
+## Step 5. Configuring & Versioning
+
+## Step 6. CI/CD process in Makefile
 
 ### clean
 ### vendor
@@ -40,9 +126,6 @@ Specify hooks in `.pre-commit-config.yaml` file:
 ### container
 ### push
 ### run
-### deploy
-
-## Step 6. Configuring & Versioning
 
 ## Step 7. Deploy into minikube
 
