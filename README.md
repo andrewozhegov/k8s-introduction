@@ -2,15 +2,12 @@
 
 Step-by-step process of deployment a simple Go web-service into Kubernetes
 
-![docker and kubernetes](https://dotmesh.io/assets/img/docker_kubernetes.png)
-
-
 ## Step 1. Pre-commit-hooks
 
 A set of configurable code quality checks to perform before committing.
 Specify hooks in `.pre-commit-config.yaml` file:
 
-![pre-commit hook](https://cdn-images-1.medium.com/max/1200/1*wjsbeBicpTWF-UHXn19ZbQ.jpeg)
+![pre-commit hook](img/pre-commit-hook.jpeg)
 
 ```
 -   repo: git://github.com/dnephin/pre-commit-golang      # repo with hooks
