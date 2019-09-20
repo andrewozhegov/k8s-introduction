@@ -113,6 +113,20 @@ func readyz(isReady *atomic.Value) http.HandlerFunc {
 
 ## Step 4. Managing dependencies with Glide
 
+There is `glide.yaml` file which contains project dependencies and their versions.
+
+```
+package: .
+import:
+- package: github.com/Sirupsen/logrus   # dependency repo
+  version: ^1.3.0                       # dependency version
+...
+```
+
+You can install dependencies by run `$ glide install`
+
+For more information just visit [glide repository](https://github.com/Masterminds/glide)
+
 ## Step 5. Configuring & Versioning
 
 ## Step 6. CI/CD process in Makefile
