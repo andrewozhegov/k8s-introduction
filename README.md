@@ -132,11 +132,28 @@ For more information just visit [glide repository](https://github.com/Mastermind
 ## Step 6. CI/CD process in Makefile
 
 ### clean
+
+Removes previously builded app
+
 ### vendor
+
+Check for dependencies with glide
+
 ### build
+
+Build go application
+
 ### container
+
+Build cintainer with installed application
+
 ### push
+
+Push builded container into DockerHub container registry
+
 ### run
+
+Starts container application
 
 ## Step 7. Deploy into minikube
 
