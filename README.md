@@ -105,8 +105,37 @@ func readyz(isReady *atomic.Value) http.HandlerFunc {
 
 ### Graceful shutdown
 
+Graceful shutdown mean that if server gets os signal to stop he will finish all current jobs before actually shut down.
+
+Here we ask the `srv` to be stop if an error being recieved
+
+```
+shutdown := make(chan struct{}, 1)
+go func() {
+    err := srv.ListenAndServe()
+    if err != nil {
+        shutdown <- struct{}{}
+        log.Printf("%v", err)
+    }
+}()
 ```
 
+Print the log with reason the server was stopped and then finaly shutdown.
+
+```
+select {
+case killSignal := <-interrupt:
+    switch killSignal {
+    case os.Interrupt:
+        log.Print("Got SIGINT...")
+    case syscall.SIGTERM:
+        log.Print("Got SIGTERM...")
+    }
+case <-shutdown:
+    log.Printf("Got an error...")
+}
+
+srv.Shutdown(context.Background())
 ```
 
 ## Step 3. Tests
