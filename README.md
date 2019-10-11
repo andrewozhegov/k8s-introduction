@@ -138,6 +138,26 @@ case <-shutdown:
 srv.Shutdown(context.Background())
 ```
 
+### Build & run application
+
+Build go application
+
+```
+$ GOOS=linux CGO_ENABLED=0 go build
+```
+
+Build and tag container with `k8s-introduction` app
+
+```
+$ docker build -t k8s-introduction -f ./Dockerfile .
+```
+
+How to run `k8s-introduction` app with 8000 port forwading
+
+```
+$ docker run -p 8000:8000 k8s-introduction
+```
+
 ## Step 3. Tests
 
 ## Step 4. Managing dependencies with Glide
