@@ -138,6 +138,19 @@ case <-shutdown:
 srv.Shutdown(context.Background())
 ```
 
+### Dockerfile
+
+a sequence of instructions to create docker image
+
+```
+FROM scratch				# using completely empty image as base
+ENV SERVICE_PORT 8000			# create an environment variable inside image
+EXPOSE $SERVICE_PORT			# specify the port using by application
+COPY k8s-introduction /			# copy builded go application inside dicker image
+CMD ["/k8s-introduction"]		# specify the command to be runned on container start
+```
+
+
 ### Build & run application
 
 Build go application
