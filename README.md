@@ -1,4 +1,4 @@
-# Introducion into CI/CD & Kubernetes
+# Introduction into CI/CD & Kubernetes
 
 Step-by-step process of deployment a simple Go web-service into Kubernetes
 
