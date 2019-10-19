@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"os"
-    "context"
-    "net/http"
+	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
 
@@ -21,7 +21,7 @@ func main() {
 		port = DEFAULTPORT
 	}
 
-    r := handlers.Router(version.RELEASE, version.COMMIT, version.REPO)
+	r := handlers.Router(version.RELEASE, version.COMMIT, version.REPO)
 
 	// Set up channel on which to send signal notifications.
 	// We must use a buffered channel or risk missing the signal
@@ -29,12 +29,12 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
 
-    srv := &http.Server{
+	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: r,
 	}
 
-    // this channel is for graceful shutdown:
+	// this channel is for graceful shutdown:
 	// if we receive an error, we can send it here to notify the server to be stopped
 	shutdown := make(chan struct{}, 1)
 	go func() {
@@ -62,4 +62,3 @@ func main() {
 	srv.Shutdown(context.Background())
 	log.Print("Done")
 }
-
