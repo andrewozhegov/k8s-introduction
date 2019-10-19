@@ -191,6 +191,22 @@ For more information just visit [glide repository](https://github.com/Mastermind
 
 ## Step 5. Configuring & Versioning
 
+### configuring
+
+The only thing available to be configured is port on whith web-server is supposed to be runned. Const `DEAFULTPORT` value is hardcoded in `main.go`. To change default port you need to set up `SERVICE_PORT` environment variable.
+
+```
+port := os.Getenv("SERVICE_PORT")
+if len(port) == 0 {
+	port = DEFAULTPORT
+}
+ . . .
+srv := &http.Server {
+	Addr: ":" + port,
+	Handler: r,
+}
+```
+
 ## Step 6. CI/CD process in Makefile
 
 ### clean
