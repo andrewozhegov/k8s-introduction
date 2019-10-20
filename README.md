@@ -207,6 +207,27 @@ srv := &http.Server {
 }
 ```
 
+### versioning
+
+Let's keep info about version, commit & repo inside binary. Variablels init with default values will be in `version/version.go`:
+
+```
+var (
+	RELEASE = "UNKNOWN"
+	REPO    = "UNKNOWN"
+	COMMIT  = "UNKNOWN"
+)
+```
+To set up specific values for this variables just initialize them in `-ldflags` with `-X` when building go app.
+
+```
+$ CGO_ENABLED=0 GOOS=${GOOS} go build -a -installsuffix cgo \
+		-ldflags "-s -w 
+		-X ${PROJECT}/version.RELEASE=${RELEASE} 
+		-X ${PROJECT}/version.COMMIT=${COMMIT} 
+		-X ${PROJECT}/version.REPO=${REPO_INFO}" -o ${APP}
+```
+
 ## Step 6. CI/CD process in Makefile
 
 ### clean
