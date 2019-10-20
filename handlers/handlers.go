@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"fmt"
-    "log"
-    "net/http"
+	"log"
+	"net/http"
 	"sync/atomic"
 	"time"
 
@@ -11,7 +11,7 @@ import (
 )
 
 func root(w http.ResponseWriter, _ *http.Request) {
-    fmt.Fprint(w, "Hello! Your request was processed.")
+	fmt.Fprint(w, "Hello! Your request was processed.")
 }
 
 // Router register necessary routes and returns an instance of a router.
@@ -31,5 +31,5 @@ func Router(version, commit, repo string) *mux.Router{
 	r.HandleFunc("/healthz", healthz)
 	r.HandleFunc("/readyz", readyz(isReady))
 
-    return r
+	return r
 }
